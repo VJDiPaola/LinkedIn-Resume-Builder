@@ -7,8 +7,10 @@ import { Copy, Briefcase, Linkedin, FileText, CheckCircle2, XCircle } from "luci
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
+type DeepPartial<T> = T extends (infer U)[] ? DeepPartial<U>[] : T extends object ? { [K in keyof T]?: DeepPartial<T[K]> } : T;
+
 interface ResultsDashboardProps {
-    data: any;
+    data: DeepPartial<OutputType>;
 }
 
 export function ResultsDashboard({ data }: ResultsDashboardProps) {
@@ -34,7 +36,7 @@ export function ResultsDashboard({ data }: ResultsDashboardProps) {
                         <div>
                             <h4 className="text-sm font-medium text-zinc-400 mb-2">Explicit Requirements</h4>
                             <div className="flex flex-wrap gap-2">
-                                {data.jdAnalysis?.explicitRequirements?.map((req: any, i: number) => (
+                                {data.jdAnalysis?.explicitRequirements?.map((req, i) => (
                                     <Badge key={i} variant="secondary" className="bg-blue-500/10 text-blue-300 hover:bg-blue-500/20">{req}</Badge>
                                 ))}
                             </div>
@@ -42,7 +44,7 @@ export function ResultsDashboard({ data }: ResultsDashboardProps) {
                         <div>
                             <h4 className="text-sm font-medium text-zinc-400 mb-2 mt-4">Implicit Focus</h4>
                             <div className="flex flex-wrap gap-2">
-                                {data.jdAnalysis?.implicitRequirements?.map((req: any, i: number) => (
+                                {data.jdAnalysis?.implicitRequirements?.map((req, i) => (
                                     <Badge key={i} variant="outline" className="text-zinc-300 border-zinc-700">{req}</Badge>
                                 ))}
                             </div>
@@ -50,7 +52,7 @@ export function ResultsDashboard({ data }: ResultsDashboardProps) {
                         <div>
                             <h4 className="text-sm font-medium text-zinc-400 mb-2 mt-4">Problems to Solve</h4>
                             <ul className="list-disc pl-4 space-y-1 text-sm text-zinc-300">
-                                {data.jdAnalysis?.problemsToSolve?.map((prob: any, i: number) => (
+                                {data.jdAnalysis?.problemsToSolve?.map((prob, i) => (
                                     <li key={i}>{prob}</li>
                                 ))}
                             </ul>
@@ -71,7 +73,7 @@ export function ResultsDashboard({ data }: ResultsDashboardProps) {
                     <CardContent className="space-y-6">
                         <div className="space-y-3">
                             <h4 className="text-sm font-medium text-zinc-400">Headline Variants</h4>
-                            {data.linkedInOptimization?.headlineVariants?.map((variant: any, i: number) => (
+                            {data.linkedInOptimization?.headlineVariants?.map((variant, i) => (
                                 <div key={i} className="group relative p-3 rounded-lg border border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800/50 transition-colors">
                                     <div className="flex justify-between items-start mb-1">
                                         <span className="text-xs font-semibold text-indigo-400 uppercase tracking-wider">{variant?.type}</span>
@@ -113,7 +115,7 @@ export function ResultsDashboard({ data }: ResultsDashboardProps) {
                             <h4 className="text-sm font-medium text-zinc-400">Tailored Resume Bullets</h4>
                             <ScrollArea className="h-[400px] pr-4">
                                 <div className="space-y-4">
-                                    {data.resumeOptimization?.bulletAnalysis?.map((bullet: any, i: number) => (
+                                    {data.resumeOptimization?.bulletAnalysis?.map((bullet, i) => (
                                         <div key={i} className="p-4 rounded-lg border border-zinc-800 bg-zinc-900/30 space-y-3">
                                             <div className="flex justify-between items-start gap-2">
                                                 <div className="flex-1">
@@ -145,7 +147,7 @@ export function ResultsDashboard({ data }: ResultsDashboardProps) {
                             <div className="space-y-3">
                                 <h4 className="text-sm font-medium text-zinc-400">ATS Keywords</h4>
                                 <div className="space-y-2">
-                                    {data.resumeOptimization?.atsKeywords?.slice(0, 5).map((kw: any, i: number) => (
+                                    {data.resumeOptimization?.atsKeywords?.slice(0, 5).map((kw, i) => (
                                         <div key={i} className="flex flex-col text-xs p-2 rounded bg-zinc-900/50 border border-zinc-800/80">
                                             <div className="flex justify-between items-center mb-1">
                                                 <span className="font-medium text-zinc-200">{kw?.keyword}</span>
@@ -160,7 +162,7 @@ export function ResultsDashboard({ data }: ResultsDashboardProps) {
                             <div className="space-y-3">
                                 <h4 className="text-sm font-medium text-zinc-400">Gap Analysis</h4>
                                 <div className="space-y-2">
-                                    {data.resumeOptimization?.gapAnalysis?.slice(0, 2).map((gap: any, i: number) => (
+                                    {data.resumeOptimization?.gapAnalysis?.slice(0, 2).map((gap, i) => (
                                         <div key={i} className="text-xs p-2 rounded bg-red-500/5 border border-red-500/20 space-y-1 text-zinc-300">
                                             <span className="font-semibold text-red-400 block">{gap?.gap}</span>
                                             <span className="text-zinc-500 block leading-tight">{gap?.recommendation}</span>

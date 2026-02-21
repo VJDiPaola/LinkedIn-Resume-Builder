@@ -61,7 +61,7 @@ export default function Home() {
               <div className="mt-4 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
                 <p className="font-semibold mb-1">Error processing request</p>
                 <p>{error.message}</p>
-                <p className="mt-2 text-xs opacity-80">Did you add your OPENAI_API_KEY to .env.local?</p>
+                <p className="mt-2 text-xs opacity-80">Please try again later or contact support if the issue persists.</p>
               </div>
             )}
           </div>

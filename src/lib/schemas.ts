@@ -1,10 +1,10 @@
 import { z } from "zod";
 
 export const InputSchema = z.object({
-  jobDescription: z.string().min(50, "Please provide a longer job description."),
-  currentRole: z.string().min(2, "Current role is required."),
-  targetRole: z.string().min(2, "Target role is required."),
-  resumeText: z.string().min(50, "Please paste your resume text.")
+  jobDescription: z.string().min(50, "Please provide a longer job description.").max(20000, "Job description is too long."),
+  currentRole: z.string().min(2, "Current role is required.").max(200, "Current role is too long."),
+  targetRole: z.string().min(2, "Target role is required.").max(200, "Target role is too long."),
+  resumeText: z.string().min(50, "Please paste your resume text.").max(20000, "Resume text is too long.")
 });
 
 export const OutputSchema = z.object({

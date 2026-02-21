@@ -7,9 +7,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Sparkles } from "lucide-react";
+import { InputType } from "@/lib/schemas";
 
 interface InputFormProps {
-    onSubmit: (data: any) => void;
+    onSubmit: (data: InputType) => void;
     isLoading: boolean;
 }
 
