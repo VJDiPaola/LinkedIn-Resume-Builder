@@ -1,14 +1,15 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { InputForm } from "@/components/InputForm";
 import { ResultsDashboard } from "@/components/ResultsDashboard";
 import { experimental_useObject as useObject } from "@ai-sdk/react";
 import { OutputSchema } from "@/lib/schemas";
-import { Sparkles } from "lucide-react";
+import { Sparkles, ArrowLeft } from "lucide-react";
 
 export default function Home() {
   const resultsRef = useRef<HTMLDivElement>(null);
+  const [showResults, setShowResults] = useState(false);
 
   const { submit, isLoading, object, error } = useObject({
     api: "/api/optimize",
@@ -23,52 +24,78 @@ export default function Home() {
 
   const handleFormSubmit = (data: any) => {
     submit(data);
+    setShowResults(true);
 
-    // Smooth scroll to results after a short delay
+    // Smooth scroll to top when results appear
     setTimeout(() => {
-      resultsRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, 500);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }, 300);
+  };
+
+  const handleStartOver = () => {
+    setShowResults(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
     <div className="min-h-screen relative overflow-hidden flex flex-col items-center pb-24">
       {/* Background gradients */}
-      <div className="absolute top-0 left-1/2 rounded-full w-[800px] h-[300px] bg-indigo-600/20 blur-[120px] -translate-x-1/2 -z-10" />
-      <div className="absolute bottom-0 right-1/4 rounded-full w-[600px] h-[400px] bg-purple-600/10 blur-[150px] -z-10" />
+      <div className="absolute top-0 left-1/2 rounded-full w-[800px] h-[300px] bg-stone-200/40 blur-[120px] -translate-x-1/2 -z-10" />
+      <div className="absolute bottom-0 right-1/4 rounded-full w-[600px] h-[400px] bg-stone-300/20 blur-[150px] -z-10" />
 
       <main className="w-full max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 flex flex-col items-center">
 
-        {/* Header Hero */}
-        <div className="text-center max-w-3xl mb-12 animate-in fade-in slide-in-from-top-8 duration-700">
-          <div className="inline-flex items-center rounded-full border border-zinc-800 bg-zinc-900/50 px-3 py-1 text-sm text-zinc-300 mb-6 backdrop-blur-sm">
-            <Sparkles className="mr-2 h-4 w-4 text-indigo-400" />
-            <span className="font-medium text-indigo-200">Powered by OpenAI GPT-5 Mini</span>
-          </div>
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-white via-zinc-200 to-zinc-500 pb-2">
-            AI-Powered Career Optimization
-          </h1>
-          <p className="mt-6 text-lg text-zinc-400">
-            Instantly tailor your resume and LinkedIn profile to any job description.
-            Stop guessing, start iterating. Our Engine analyzes gaps and rewrites bullets to maximize relevance.
-          </p>
-        </div>
-
-        {/* Form */}
-        <div className="w-full max-w-3xl transition-all duration-700 ease-in-out">
-          <InputForm onSubmit={handleFormSubmit} isLoading={isLoading} />
-          {error && (
-            <div className="mt-4 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
-              <p className="font-semibold mb-1">Error processing request</p>
-              <p>{error.message}</p>
-              <p className="mt-2 text-xs opacity-80">Please try again later or contact support if the issue persists.</p>
+        {!showResults && (
+          <>
+            {/* Header Hero */}
+            <div className="text-center max-w-3xl mb-12 animate-in fade-in slide-in-from-top-8 duration-700">
+              <div className="inline-flex items-center rounded-full border border-stone-200 bg-white px-3 py-1 text-sm text-stone-500 mb-6">
+                <Sparkles className="mr-2 h-4 w-4 text-stone-400" />
+                <span className="font-medium text-stone-600">Powered by OpenAI GPT-5 Mini</span>
+              </div>
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-stone-900 pb-2">
+                AI-Powered Career Optimization
+              </h1>
+              <p className="mt-6 text-lg text-stone-500">
+                Instantly tailor your resume and LinkedIn profile to any job description.
+                Stop guessing, start iterating. Our Engine analyzes gaps and rewrites bullets to maximize relevance.
+              </p>
             </div>
-          )}
-        </div>
+
+            {/* Form */}
+            <div className="w-full max-w-3xl transition-all duration-700 ease-in-out">
+              <InputForm onSubmit={handleFormSubmit} isLoading={isLoading} />
+              {error && (
+                <div className="mt-4 p-4 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm">
+                  <p className="font-semibold mb-1">Error processing request</p>
+                  <p>{error.message}</p>
+                  <p className="mt-2 text-xs opacity-80">Please try again later or contact support if the issue persists.</p>
+                </div>
+              )}
+            </div>
+          </>
+        )}
 
         {/* Results Area */}
-        {object && (
-          <div className="w-full mt-8" ref={resultsRef}>
-            <ResultsDashboard data={object} />
+        {showResults && (
+          <div className="w-full" ref={resultsRef}>
+            <button
+              onClick={handleStartOver}
+              className="mb-6 inline-flex items-center gap-2 text-sm text-stone-400 hover:text-stone-900 transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Start Over
+            </button>
+            {object ? (
+              <ResultsDashboard data={object} />
+            ) : (
+              <div className="flex items-center justify-center py-24">
+                <div className="flex flex-col items-center gap-4">
+                  <div className="h-8 w-8 animate-spin rounded-full border-2 border-stone-400 border-t-transparent" />
+                  <p className="text-stone-500 text-sm">Optimizing your profile...</p>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

@@ -23,9 +23,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark scroll-smooth">
+    <html lang="en" className="scroll-smooth">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-slate-950 text-slate-50 selection:bg-indigo-500/30`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-stone-50 text-stone-900 selection:bg-stone-300/50`}
       >
         <div className="relative flex min-h-screen flex-col bg-background">
           <main className="flex-1">{children}</main>
