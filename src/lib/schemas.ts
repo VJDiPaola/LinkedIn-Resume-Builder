@@ -34,7 +34,7 @@ export const OutputSchema = z.object({
     atsKeywords: z.array(z.object({
       keyword: z.string(),
       status: z.enum(["Found", "Missing"]),
-      suggestion: z.string().optional()
+      suggestion: z.string().describe("Suggestion for incorporating the keyword, or empty string if not applicable")
     })).describe("Important keywords extracted from the JD and whether they exist in the targeted resume")
   })
 });
