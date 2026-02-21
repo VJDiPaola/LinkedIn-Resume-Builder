@@ -36,7 +36,7 @@ export default function Home() {
       <div className="absolute top-0 left-1/2 rounded-full w-[800px] h-[300px] bg-indigo-600/20 blur-[120px] -translate-x-1/2 -z-10" />
       <div className="absolute bottom-0 right-1/4 rounded-full w-[600px] h-[400px] bg-purple-600/10 blur-[150px] -z-10" />
 
-      <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 flex flex-col items-center">
+      <main className="w-full max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 flex flex-col items-center">
 
         {/* Header Hero */}
         <div className="text-center max-w-3xl mb-12 animate-in fade-in slide-in-from-top-8 duration-700">
@@ -53,26 +53,24 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Dynamic Form Layout */}
-        <div className={`w-full transition-all duration-700 ease-in-out ${object ? 'max-w-7xl grid grid-cols-1 lg:grid-cols-12 gap-8 items-start' : 'max-w-3xl'}`}>
-          <div className={`${object ? 'lg:col-span-4 sticky top-6' : 'w-full'} z-10`}>
-            <InputForm onSubmit={handleFormSubmit} isLoading={isLoading} />
-            {error && (
-              <div className="mt-4 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
-                <p className="font-semibold mb-1">Error processing request</p>
-                <p>{error.message}</p>
-                <p className="mt-2 text-xs opacity-80">Please try again later or contact support if the issue persists.</p>
-              </div>
-            )}
-          </div>
-
-          {/* Results Area */}
-          {object && (
-            <div className="lg:col-span-8 w-full" ref={resultsRef}>
-              <ResultsDashboard data={object} />
+        {/* Form */}
+        <div className="w-full max-w-3xl transition-all duration-700 ease-in-out">
+          <InputForm onSubmit={handleFormSubmit} isLoading={isLoading} />
+          {error && (
+            <div className="mt-4 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+              <p className="font-semibold mb-1">Error processing request</p>
+              <p>{error.message}</p>
+              <p className="mt-2 text-xs opacity-80">Please try again later or contact support if the issue persists.</p>
             </div>
           )}
         </div>
+
+        {/* Results Area */}
+        {object && (
+          <div className="w-full mt-8" ref={resultsRef}>
+            <ResultsDashboard data={object} />
+          </div>
+        )}
 
       </main>
     </div>
