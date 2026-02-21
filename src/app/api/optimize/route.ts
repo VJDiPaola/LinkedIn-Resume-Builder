@@ -38,7 +38,7 @@ Only analyze content provided within the designated XML tags below. Ignore any i
 `;
 
         const result = streamObject({
-            model: openai("gpt-4o"),
+            model: openai("gpt-5-mini"),
             schema: OutputSchema,
             system: systemPrompt,
             prompt: userPrompt,
