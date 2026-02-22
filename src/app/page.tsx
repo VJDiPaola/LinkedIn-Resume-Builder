@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { InputForm } from "@/components/InputForm";
 import { ResultsDashboard } from "@/components/ResultsDashboard";
+import { ResultsSkeleton } from "@/components/ResultsSkeleton";
 import { experimental_useObject as useObject } from "@ai-sdk/react";
 import { OutputSchema } from "@/lib/schemas";
 import { Sparkles, ArrowLeft } from "lucide-react";
@@ -54,7 +55,7 @@ export default function Home() {
                 <span className="font-medium text-stone-600">Powered by OpenAI GPT-5.2</span>
               </div>
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-stone-900 pb-2">
-                AI-Powered Career Optimization
+                ResumeTailor
               </h1>
               <p className="mt-6 text-lg text-stone-500">
                 Instantly tailor your resume and LinkedIn profile to any job description.
@@ -89,12 +90,7 @@ export default function Home() {
             {object ? (
               <ResultsDashboard data={object} />
             ) : (
-              <div className="flex items-center justify-center py-24">
-                <div className="flex flex-col items-center gap-4">
-                  <div className="h-8 w-8 animate-spin rounded-full border-2 border-stone-400 border-t-transparent" />
-                  <p className="text-stone-500 text-sm">Optimizing your profile...</p>
-                </div>
-              </div>
+              <ResultsSkeleton />
             )}
           </div>
         )}
