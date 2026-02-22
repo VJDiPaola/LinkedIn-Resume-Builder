@@ -30,7 +30,7 @@ The application is a lean, focused tool built on three layers:
 The UI presents an input form, submits it to the backend, then replaces the form with a structured results dashboard. There are no routes to navigate, no accounts to manage, and no database. The experience is intentionally minimal.
 
 **2. A streaming API route**
-A single `POST /api/optimize` endpoint accepts the user's inputs, validates them with Zod, then calls the OpenAI API using Vercel's `streamObject` method. The response is a structured JSON object that streams progressively to the client — users see results fill in as the model generates them rather than waiting for a full response before anything renders.
+A single `POST /api/optimize` endpoint validates a session token, enforces per-session rate limiting, validates inputs against a Zod schema with both minimum and maximum length constraints, then calls the OpenAI API using Vercel's `streamObject` method. User inputs are wrapped in XML delimiter tags with explicit system-prompt instructions to ignore embedded instructions, mitigating prompt injection. The response is a structured JSON object that streams progressively to the client — users see results fill in as the model generates them rather than waiting for a full response before anything renders. All requests are logged with structured JSON output, including token usage on completion.
 
 **3. A schema-driven output contract**
 The AI's output is constrained by a Zod schema that defines every field the model is expected to return — bullet rewrites, relevance scores, headline variants, ATS keywords, and more. This schema is used for both runtime validation and TypeScript type inference, so the frontend receives fully typed data without any manual casting.
@@ -41,15 +41,17 @@ The AI's output is constrained by a Zod schema that defines every field the mode
 
 | Layer | Technology |
 |---|---|
-| Framework | Next.js 15+ (App Router) |
+| Framework | Next.js 16 (App Router) |
 | Language | TypeScript 5 |
 | AI Integration | Vercel AI SDK (`streamObject`) |
-| Model | GPT-5 Mini (OpenAI) |
+| Model | GPT-5.2 (OpenAI) |
 | Validation | Zod v4 |
 | UI Components | shadcn/ui |
 | Styling | Tailwind CSS v4 |
 | Animations | Framer Motion |
 | Icons | Lucide React |
+| Rate Limiting | Upstash Redis (with in-memory fallback) |
+| Logging | Structured JSON logger |
 
 ---
 
@@ -63,7 +65,7 @@ This was the right call for this use case for two reasons. First, it gives the f
 
 ### Schema-First Design with Zod
 
-Both the input and output are defined as Zod schemas in `src/lib/schemas.ts`. The input schema enforces field lengths and required values before any token is sent to the API. The output schema defines the expected structure of the AI response, which Vercel's SDK uses to constrain and validate the model's output.
+Both the input and output are defined as Zod schemas in `src/lib/schemas.ts`. The input schema enforces minimum and maximum field lengths (e.g., resume text must be between 50 and 20,000 characters) and required values before any token is sent to the API, preventing both incomplete submissions and oversized payloads that could cause excessive token costs. The output schema defines the expected structure of the AI response, which Vercel's SDK uses to constrain and validate the model's output.
 
 This approach eliminated an entire class of runtime bugs. Without an output schema, the model might occasionally return a field with the wrong type, omit an optional field, or return a string where an array was expected. By declaring the contract explicitly, those failures surface as validation errors rather than silent rendering issues.
 
@@ -75,9 +77,21 @@ The resulting component code is straightforward. The form calls `submit()` on su
 
 ### Component Separation
 
-The two main business components — `InputForm` and `ResultsDashboard` — are cleanly separated. The parent page component holds state and manages the transition between them. `InputForm` owns only form field state and a submit handler. `ResultsDashboard` is a pure display component that receives the `object` from the hook and renders it.
+The three main business components — `InputForm`, `ResultsDashboard`, and `ResultsSkeleton` — are cleanly separated. The parent page component holds state and manages the transition between them. `InputForm` owns only form field state and a submit handler. `ResultsSkeleton` provides a structured loading state that mirrors the layout of the results dashboard, giving users immediate visual feedback while the AI generates its response. `ResultsDashboard` is a pure display component that receives the streaming `object` from the hook and renders it with full TypeScript safety via `DeepPartial<OutputType>`.
 
 This made iterating on the results layout straightforward. The display logic could be changed without touching the form or the API integration.
+
+### Prompt Injection Mitigation
+
+User-supplied text is wrapped in XML delimiter tags (`<job_description>`, `<resume_text>`, etc.) before being interpolated into the prompt. The system prompt explicitly instructs the model to only analyze content within those tags and to ignore any embedded instructions. This is a defense-in-depth measure — while `streamObject` constrains the output to a fixed schema (limiting the damage of a successful injection), the delimiters reduce the likelihood of the model being manipulated in the first place.
+
+### Rate Limiting and Session Auth
+
+The API route requires a session token (via cookie) and enforces per-session rate limiting at 5 requests per minute. In production, rate limiting is backed by Upstash Redis for distributed enforcement. In local development, an in-memory sliding window implementation provides the same behavior without external dependencies. This dual-mode approach keeps the development experience lightweight while ensuring production readiness.
+
+### Structured Logging
+
+All API requests are logged as structured JSON with timestamps, log levels, and contextual metadata (session token prefix, token usage, validation errors). This makes logs machine-parseable for production observability tooling while remaining human-readable during development.
 
 ### shadcn/ui Over a Full Component Library
 
@@ -110,7 +124,7 @@ The tool surfaces skills and experience gaps between the user's current profile 
 
 **The schema constraint on the model output was essential.** Early iterations without a strict output schema produced inconsistent results — fields missing, wrong types, and arrays returned as strings. Zod schemas fed into `streamObject` resolved this almost entirely.
 
-**GPT-5 Mini was the right model choice.** For structured extraction and rewriting tasks with a well-defined prompt, GPT-5 Mini delivers quality results at substantially lower cost and latency than larger models. The output schema further constrains the model's behavior, making the smaller model more reliable for this specific use case than it would be in open-ended generation.
+**GPT-5.2 was the right model choice.** For structured extraction and rewriting tasks with a well-defined prompt, GPT-5.2 delivers quality results at substantially lower cost and latency than larger models. The output schema further constrains the model's behavior, making it more reliable for this specific use case than it would be in open-ended generation.
 
 **shadcn/ui accelerated the front-end build significantly.** Having accessible, styled primitives (Card, Badge, ScrollArea, Tabs) available from day one meant UI development was almost entirely composition — assembling existing components — rather than building from scratch.
 
@@ -122,7 +136,7 @@ The tool surfaces skills and experience gaps between the user's current profile 
 
 **Single-request architecture limits depth.** All analysis is done in one API call. This keeps the implementation simple but means there is a hard ceiling on how deep the analysis can go. A multi-step agentic approach — where the model first analyzes the JD, then rewrites bullets, then generates LinkedIn content as separate calls — could produce higher-quality output at the cost of additional complexity and latency.
 
-**No authentication.** Anyone with the URL can use the API. For a deployed version, rate limiting and API key protection would be necessary to prevent abuse and manage cost.
+**Session-based auth is minimal.** The API validates a session token from cookies and rate-limits by session, but there is no user account system, login flow, or persistent identity. For a deployed product, integrating a proper auth provider (e.g., NextAuth, Clerk) would be necessary for abuse prevention beyond simple rate limiting.
 
 **60-second API timeout.** The API route sets a 60-second max duration. For long resumes or complex job descriptions, this is occasionally tight. Edge runtime or a queue-based approach would be needed for production scale.
 
@@ -132,12 +146,14 @@ The tool surfaces skills and experience gaps between the user's current profile 
 
 - **Pages:** 1
 - **API Routes:** 1
-- **Business Components:** 2 (`InputForm`, `ResultsDashboard`)
+- **Business Components:** 3 (`InputForm`, `ResultsDashboard`, `ResultsSkeleton`)
+- **Infrastructure Modules:** 3 (`schemas`, `rate-limit`, `logger`)
 - **UI Primitives:** 9 (shadcn)
 - **Schema Definitions:** 2 (input, output)
-- **External Dependencies:** OpenAI API
-- **Estimated Lines of Code:** ~900 (excluding generated files and node_modules)
-- **Build Time:** ~3 seconds
+- **Test Suites:** 1 (`schemas.test.ts`)
+- **External Dependencies:** OpenAI API, Upstash Redis (optional)
+- **Estimated Lines of Code:** ~1,300 (excluding generated files and node_modules)
+- **Build Time:** ~5 seconds
 
 ---
 
@@ -149,4 +165,4 @@ The application is a clear example of what is now possible in a short build cycl
 
 ---
 
-*Built with Next.js, Vercel AI SDK, OpenAI GPT-5 Mini, shadcn/ui, and Tailwind CSS.*
+*Built with Next.js, Vercel AI SDK, OpenAI GPT-5.2, shadcn/ui, and Tailwind CSS.*

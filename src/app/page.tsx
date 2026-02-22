@@ -5,7 +5,7 @@ import { InputForm } from "@/components/InputForm";
 import { ResultsDashboard } from "@/components/ResultsDashboard";
 import { ResultsSkeleton } from "@/components/ResultsSkeleton";
 import { experimental_useObject as useObject } from "@ai-sdk/react";
-import { OutputSchema } from "@/lib/schemas";
+import { InputType, OutputSchema } from "@/lib/schemas";
 import { Sparkles, ArrowLeft } from "lucide-react";
 
 export default function Home() {
@@ -15,7 +15,7 @@ export default function Home() {
   const { submit, isLoading, object, error } = useObject({
     api: "/api/optimize",
     schema: OutputSchema,
-    onFinish: (result: any) => {
+    onFinish: () => {
       console.log("Optimization complete.");
     },
     onError: (err: Error) => {
@@ -23,7 +23,7 @@ export default function Home() {
     }
   });
 
-  const handleFormSubmit = (data: any) => {
+  const handleFormSubmit = (data: InputType) => {
     submit(data);
     setShowResults(true);
 
