@@ -51,7 +51,7 @@ export default function Home() {
             <div className="text-center max-w-3xl mb-12 animate-in fade-in slide-in-from-top-8 duration-700">
               <div className="inline-flex items-center rounded-full border border-stone-200 bg-white px-3 py-1 text-sm text-stone-500 mb-6">
                 <Sparkles className="mr-2 h-4 w-4 text-stone-400" />
-                <span className="font-medium text-stone-600">Powered by OpenAI GPT-5 Mini</span>
+                <span className="font-medium text-stone-600">Powered by OpenAI GPT-5.2</span>
               </div>
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-stone-900 pb-2">
                 AI-Powered Career Optimization
