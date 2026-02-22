@@ -100,6 +100,15 @@ export default function Home() {
         )}
 
       </main>
+
+      <footer className="w-full text-center py-8 mt-auto">
+        <p className="text-sm text-stone-400">
+          Built by{" "}
+          <a href="https://teamvince.com" target="_blank" rel="noopener noreferrer" className="text-stone-600 hover:text-stone-900 font-medium transition-colors">
+            teamvince
+          </a>
+        </p>
+      </footer>
     </div>
   );
 }
