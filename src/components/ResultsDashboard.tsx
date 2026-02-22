@@ -1,13 +1,12 @@
 "use client";
 
+import type { DeepPartial } from "ai";
 import { OutputType } from "@/lib/schemas";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Copy, Briefcase, Linkedin, FileText, CheckCircle2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-
-type DeepPartial<T> = T extends (infer U)[] ? DeepPartial<U>[] : T extends object ? { [K in keyof T]?: DeepPartial<T[K]> } : T;
 
 interface ResultsDashboardProps {
     data: DeepPartial<OutputType>;
