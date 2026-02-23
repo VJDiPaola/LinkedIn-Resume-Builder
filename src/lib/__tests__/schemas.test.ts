@@ -6,6 +6,8 @@ const validInput = {
   currentRole: "Software Engineer",
   targetRole: "Senior Software Engineer",
   resumeText: "B".repeat(50),
+  website: "",
+  formStartedAt: Date.now() - 5000,
 };
 
 const validOutput = {
@@ -83,6 +85,14 @@ describe("InputSchema", () => {
     const result = InputSchema.safeParse({
       ...validInput,
       currentRole: "A",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a non-empty honeypot field", () => {
+    const result = InputSchema.safeParse({
+      ...validInput,
+      website: "spam",
     });
     expect(result.success).toBe(false);
   });

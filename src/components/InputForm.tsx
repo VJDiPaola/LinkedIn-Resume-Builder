@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,11 +21,16 @@ export function InputForm({ onSubmit, isLoading }: InputFormProps) {
         targetRole: "",
         jobDescription: "",
         resumeText: "",
+        website: "",
+        formStartedAt: Date.now(),
     });
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSubmit(formData);
+        onSubmit({
+            ...formData,
+            formStartedAt: formData.formStartedAt || Date.now(),
+        });
     };
 
     return (
@@ -38,6 +44,19 @@ export function InputForm({ onSubmit, isLoading }: InputFormProps) {
             </CardHeader>
             <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="hidden" aria-hidden="true">
+                        <Label htmlFor="website">Website</Label>
+                        <Input
+                            id="website"
+                            name="website"
+                            tabIndex={-1}
+                            autoComplete="off"
+                            value={formData.website}
+                            onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                            disabled={isLoading}
+                        />
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="currentRole" className="text-stone-600">Current Role</Label>
@@ -108,6 +127,18 @@ export function InputForm({ onSubmit, isLoading }: InputFormProps) {
                             </>
                         )}
                     </Button>
+
+                    <p className="text-xs leading-relaxed text-stone-500">
+                        By submitting, you agree to our{" "}
+                        <Link href="/terms" className="font-medium text-stone-700 hover:text-stone-900 underline underline-offset-2">
+                            Terms
+                        </Link>{" "}
+                        and{" "}
+                        <Link href="/privacy" className="font-medium text-stone-700 hover:text-stone-900 underline underline-offset-2">
+                            Privacy Policy
+                        </Link>
+                        . Do not submit highly sensitive personal data.
+                    </p>
                 </form>
             </CardContent>
         </Card>

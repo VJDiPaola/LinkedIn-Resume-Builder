@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 import { InputForm } from "@/components/InputForm";
 import { ResultsDashboard } from "@/components/ResultsDashboard";
 import { ResultsSkeleton } from "@/components/ResultsSkeleton";
@@ -103,6 +104,15 @@ export default function Home() {
           <a href="https://teamvince.com" target="_blank" rel="noopener noreferrer" className="text-stone-600 hover:text-stone-900 font-medium transition-colors">
             teamvince
           </a>
+        </p>
+        <p className="mt-2 text-xs text-stone-400">
+          <Link href="/terms" className="hover:text-stone-600 underline underline-offset-2">
+            Terms
+          </Link>
+          {" · "}
+          <Link href="/privacy" className="hover:text-stone-600 underline underline-offset-2">
+            Privacy
+          </Link>
         </p>
       </footer>
     </div>

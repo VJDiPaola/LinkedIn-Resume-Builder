@@ -1,6 +1,6 @@
 import { openai } from "@ai-sdk/openai";
 import { streamObject } from "ai";
-import { InputSchema, OutputSchema } from "@/lib/schemas";
+import { InputSchema, OutputSchema, type InputType } from "@/lib/schemas";
 import { rateLimit, buildLimitKey } from "@/lib/rate-limit";
 import { verifySessionToken } from "@/lib/session";
 import { jsonError } from "@/lib/api-errors";
@@ -9,11 +9,41 @@ import { cookies } from "next/headers";
 import { log } from "@/lib/logger";
 
 export const maxDuration = 60;
+const MIN_FORM_FILL_MS = 1_200;
+const FUTURE_TIMESTAMP_SKEW_MS = 30_000;
+const BOT_UA_PATTERN = /(bot|crawler|spider|curl|wget|python|postman|insomnia)/i;
 
 function getClientIp(req: Request): string {
     const xff = req.headers.get("x-forwarded-for");
     if (xff) return xff.split(",")[0]?.trim() ?? "unknown";
     return req.headers.get("x-real-ip") ?? "unknown";
+}
+
+function getBotGateFailureReason(req: Request, input: InputType): string | null {
+    if (input.website && input.website.trim().length > 0) {
+        return "honeypot_filled";
+    }
+
+    const formStartedAt = input.formStartedAt;
+    if (!formStartedAt) {
+        return "missing_form_started_at";
+    }
+
+    const now = Date.now();
+    if (formStartedAt > now + FUTURE_TIMESTAMP_SKEW_MS) {
+        return "future_form_started_at";
+    }
+
+    if (now - formStartedAt < MIN_FORM_FILL_MS) {
+        return "submitted_too_fast";
+    }
+
+    const userAgent = req.headers.get("user-agent");
+    if (userAgent && BOT_UA_PATTERN.test(userAgent)) {
+        return "bot_user_agent";
+    }
+
+    return null;
 }
 
 export async function POST(req: Request) {
@@ -59,6 +89,12 @@ export async function POST(req: Request) {
                 status: 400,
                 headers: { "Content-Type": "application/json" },
             });
+        }
+
+        const botGateFailure = getBotGateFailureReason(req, parseResult.data);
+        if (botGateFailure) {
+            log.warn("Bot gate blocked request", { sessionToken: tokenPrefix, reason: botGateFailure });
+            return jsonError("Request blocked by anti-abuse checks.", "BOT_DETECTED", 403);
         }
 
         const { jobDescription, currentRole, targetRole, resumeText } = parseResult.data;

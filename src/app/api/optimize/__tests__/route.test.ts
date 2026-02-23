@@ -25,6 +25,17 @@ import { cookies } from "next/headers";
 import { verifySessionToken } from "@/lib/session";
 import { rateLimit } from "@/lib/rate-limit";
 
+function buildValidPayload() {
+    return {
+        jobDescription: "A".repeat(50),
+        currentRole: "Software Engineer",
+        targetRole: "Senior Software Engineer",
+        resumeText: "B".repeat(50),
+        website: "",
+        formStartedAt: Date.now() - 5_000,
+    };
+}
+
 describe("POST /api/optimize", () => {
     beforeEach(() => {
         vi.mocked(cookies).mockResolvedValue({
@@ -55,12 +66,7 @@ describe("POST /api/optimize", () => {
 
         const req = new Request("http://localhost/api/optimize", {
             method: "POST",
-            body: JSON.stringify({
-                jobDescription: "A".repeat(50),
-                currentRole: "Engineer",
-                targetRole: "Senior Engineer",
-                resumeText: "B".repeat(50),
-            }),
+            body: JSON.stringify(buildValidPayload()),
             headers: { "Content-Type": "application/json" },
         });
         const res = await POST(req);
@@ -77,12 +83,7 @@ describe("POST /api/optimize", () => {
 
         const req = new Request("http://localhost/api/optimize", {
             method: "POST",
-            body: JSON.stringify({
-                jobDescription: "A".repeat(50),
-                currentRole: "Engineer",
-                targetRole: "Senior Engineer",
-                resumeText: "B".repeat(50),
-            }),
+            body: JSON.stringify(buildValidPayload()),
             headers: { "Content-Type": "application/json" },
         });
         const res = await POST(req);
@@ -98,12 +99,7 @@ describe("POST /api/optimize", () => {
 
         const req = new Request("http://localhost/api/optimize", {
             method: "POST",
-            body: JSON.stringify({
-                jobDescription: "A".repeat(50),
-                currentRole: "Engineer",
-                targetRole: "Senior Engineer",
-                resumeText: "B".repeat(50),
-            }),
+            body: JSON.stringify(buildValidPayload()),
             headers: { "Content-Type": "application/json" },
         });
         const res = await POST(req);
@@ -122,10 +118,8 @@ describe("POST /api/optimize", () => {
         const req = new Request("http://localhost/api/optimize", {
             method: "POST",
             body: JSON.stringify({
+                ...buildValidPayload(),
                 jobDescription: "too short",
-                currentRole: "Engineer",
-                targetRole: "Senior Engineer",
-                resumeText: "B".repeat(50),
             }),
             headers: { "Content-Type": "application/json" },
         });
@@ -133,6 +127,26 @@ describe("POST /api/optimize", () => {
         expect(res.status).toBe(400);
         const data = await res.json();
         expect(data.code).toBe("VALIDATION_ERROR");
+    });
+
+    it("returns 403 with BOT_DETECTED when honeypot field is filled", async () => {
+        vi.mocked(cookies).mockResolvedValue({
+            get: () => ({ value: "valid.token" }),
+        } as Awaited<ReturnType<typeof cookies>>);
+        vi.mocked(verifySessionToken).mockReturnValue("session-id-12345");
+
+        const req = new Request("http://localhost/api/optimize", {
+            method: "POST",
+            body: JSON.stringify({
+                ...buildValidPayload(),
+                website: "spam.example",
+            }),
+            headers: { "Content-Type": "application/json" },
+        });
+        const res = await POST(req);
+        expect(res.status).toBe(403);
+        const data = await res.json();
+        expect(data.code).toBe("BOT_DETECTED");
     });
 
     it("returns 200 and stream when valid session and body", async () => {
@@ -143,12 +157,7 @@ describe("POST /api/optimize", () => {
 
         const req = new Request("http://localhost/api/optimize", {
             method: "POST",
-            body: JSON.stringify({
-                jobDescription: "A".repeat(50),
-                currentRole: "Software Engineer",
-                targetRole: "Senior Software Engineer",
-                resumeText: "B".repeat(50),
-            }),
+            body: JSON.stringify(buildValidPayload()),
             headers: { "Content-Type": "application/json" },
         });
         const res = await POST(req);
