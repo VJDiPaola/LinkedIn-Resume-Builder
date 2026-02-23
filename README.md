@@ -32,6 +32,8 @@ See [.env.example](.env.example) for the full list. Summary:
 
 In **production**, Upstash and `SESSION_SECRET` are required; the app will fail fast if they are missing. For **local development**, only `OPENAI_API_KEY` is required; rate limiting uses an in-memory fallback and a dev session secret when `SESSION_SECRET` is unset.
 
+If you see an **internal error or 503** when visiting the app in an incognito window (or on first visit), the server cannot create a session cookie—set `SESSION_SECRET` in your environment (production) or run with `npm run dev` (development uses a built-in secret).
+
 ## Deployment
 
 1. Set all required environment variables in your host (e.g. Vercel project settings).
