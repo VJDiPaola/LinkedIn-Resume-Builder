@@ -13,12 +13,52 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ResumeTailor — AI-Powered Career Optimization",
-  description: "Instantly tailor your resume and LinkedIn profile to any job description with AI-powered analysis, gap detection, and ATS keyword optimization.",
+  metadataBase: new URL("https://resumetailor.teamvince.com"),
+  title: "ResumeTailor - AI-Powered Career Optimization",
+  description:
+    "Instantly tailor your resume and LinkedIn profile to any job description with AI-powered analysis, gap detection, and ATS keyword optimization.",
+  authors: [{ name: "Vincent DiPaola", url: "https://teamvince.com" }],
+  creator: "Vincent DiPaola",
+  publisher: "TeamVince",
+  alternates: {
+    canonical: "https://resumetailor.teamvince.com/",
+  },
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: "/apple-icon",
+  },
   openGraph: {
-    title: "ResumeTailor — AI-Powered Career Optimization",
-    description: "Instantly tailor your resume and LinkedIn profile to any job description with AI-powered analysis, gap detection, and ATS keyword optimization.",
-    type: "website",
+    title: "ResumeTailor - AI-Powered Career Optimization",
+    description:
+      "Instantly tailor your resume and LinkedIn profile to any job description with AI-powered analysis, gap detection, and ATS keyword optimization.",
+    type: "article",
+    url: "https://resumetailor.teamvince.com/",
+    siteName: "ResumeTailor",
+    publishedTime: "2026-02-22T00:00:00.000Z",
+    authors: ["Vincent DiPaola"],
+    images: [
+      {
+        url: "https://teamvince.com/og-image.png",
+        width: 1200,
+        height: 627,
+        alt: "TeamVince icon",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "ResumeTailor - AI-Powered Career Optimization",
+    description:
+      "Instantly tailor your resume and LinkedIn profile to any job description with AI-powered analysis, gap detection, and ATS keyword optimization.",
+    images: ["https://teamvince.com/og-image.png"],
+  },
+  other: {
+    "article:author": "Vincent DiPaola",
+    "article:published_time": "2026-02-22T00:00:00.000Z",
   },
 };
 
