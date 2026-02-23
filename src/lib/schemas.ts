@@ -9,8 +9,8 @@ export const InputSchema = z.object({
 
 export const OutputSchema = z.object({
   jdAnalysis: z.object({
-    explicitRequirements: z.array(z.string()).describe("Directly stated skills and requirements from the JD"),
-    implicitRequirements: z.array(z.string()).describe("Implied soft skills and unstated needs inferred from the JD"),
+    explicitRequirements: z.array(z.string()).describe("Short, specific skills and qualifications directly stated in the JD (e.g. '5+ years Python', 'Series B fundraising experience')"),
+    implicitRequirements: z.array(z.string()).describe("Brief implied soft skills or unstated expectations inferred from the JD (e.g. 'Cross-functional communication', 'Comfort with ambiguity')"),
     problemsToSolve: z.array(z.string()).describe("The core business problems this role is being hired to solve")
   }),
   linkedInOptimization: z.object({
