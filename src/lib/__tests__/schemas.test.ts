@@ -89,12 +89,12 @@ describe("InputSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("rejects a non-empty honeypot field", () => {
+  it("accepts a non-empty honeypot field at schema layer", () => {
     const result = InputSchema.safeParse({
       ...validInput,
       website: "spam",
     });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 
   it("rejects jobDescription longer than 20000 chars", () => {

@@ -109,7 +109,7 @@ export default function Home() {
           <Link href="/terms" className="hover:text-stone-600 underline underline-offset-2">
             Terms
           </Link>
-          {" · "}
+          {" | "}
           <Link href="/privacy" className="hover:text-stone-600 underline underline-offset-2">
             Privacy
           </Link>

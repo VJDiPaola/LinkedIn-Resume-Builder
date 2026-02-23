@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,20 +16,24 @@ interface InputFormProps {
 }
 
 export function InputForm({ onSubmit, isLoading }: InputFormProps) {
+    const formStartedAtRef = useRef<number | null>(null);
     const [formData, setFormData] = useState({
         currentRole: "",
         targetRole: "",
         jobDescription: "",
         resumeText: "",
         website: "",
-        formStartedAt: Date.now(),
     });
+
+    useEffect(() => {
+        formStartedAtRef.current = Date.now();
+    }, []);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         onSubmit({
             ...formData,
-            formStartedAt: formData.formStartedAt || Date.now(),
+            formStartedAt: formStartedAtRef.current ?? Date.now(),
         });
     };
 
@@ -41,6 +45,17 @@ export function InputForm({ onSubmit, isLoading }: InputFormProps) {
                 <CardDescription className="text-stone-500">
                     Paste your target job description and current resume to generate tailored content.
                 </CardDescription>
+                <p className="text-xs leading-relaxed text-stone-500 pt-2">
+                    By continuing, you agree to our{" "}
+                    <Link href="/terms" className="font-medium text-stone-700 hover:text-stone-900 underline underline-offset-2">
+                        Terms
+                    </Link>{" "}
+                    and{" "}
+                    <Link href="/privacy" className="font-medium text-stone-700 hover:text-stone-900 underline underline-offset-2">
+                        Privacy Policy
+                    </Link>
+                    . Do not submit highly sensitive personal data.
+                </p>
             </CardHeader>
             <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-6">
@@ -128,17 +143,6 @@ export function InputForm({ onSubmit, isLoading }: InputFormProps) {
                         )}
                     </Button>
 
-                    <p className="text-xs leading-relaxed text-stone-500">
-                        By submitting, you agree to our{" "}
-                        <Link href="/terms" className="font-medium text-stone-700 hover:text-stone-900 underline underline-offset-2">
-                            Terms
-                        </Link>{" "}
-                        and{" "}
-                        <Link href="/privacy" className="font-medium text-stone-700 hover:text-stone-900 underline underline-offset-2">
-                            Privacy Policy
-                        </Link>
-                        . Do not submit highly sensitive personal data.
-                    </p>
                 </form>
             </CardContent>
         </Card>
