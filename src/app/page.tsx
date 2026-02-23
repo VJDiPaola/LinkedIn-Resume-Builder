@@ -20,6 +20,8 @@ export default function Home() {
       console.log("Optimization complete.");
     },
     onError: (err: Error) => {
+      setShowResults(false);
+      window.scrollTo({ top: 0, behavior: "smooth" });
       console.error("Failed to stream optimization object:", err);
     }
   });
@@ -38,6 +40,13 @@ export default function Home() {
     setShowResults(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
+  const errorMessage = error?.message ?? "";
+  const lowerErrorMessage = errorMessage.toLowerCase();
+  const isRateLimited =
+    lowerErrorMessage.includes("rate_limit_exceeded") ||
+    lowerErrorMessage.includes("too many requests") ||
+    lowerErrorMessage.includes("429");
 
   return (
     <div className="min-h-screen relative overflow-hidden flex flex-col items-center pb-24">
@@ -69,9 +78,17 @@ export default function Home() {
               <InputForm onSubmit={handleFormSubmit} isLoading={isLoading} />
               {error && (
                 <div className="mt-4 p-4 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm">
-                  <p className="font-semibold mb-1">Error processing request</p>
-                  <p>{error.message}</p>
-                  <p className="mt-2 text-xs opacity-80">Please try again later or contact support if the issue persists.</p>
+                  <p className="font-semibold mb-1">{isRateLimited ? "Rate limit reached" : "Error processing request"}</p>
+                  <p>
+                    {isRateLimited
+                      ? "You've reached the request limit. Please wait 60 seconds, then try again."
+                      : errorMessage}
+                  </p>
+                  <p className="mt-2 text-xs opacity-80">
+                    {isRateLimited
+                      ? "If this keeps happening unexpectedly, try again in an incognito window or clear site cookies."
+                      : "Please try again later or contact support if the issue persists."}
+                  </p>
                 </div>
               )}
             </div>

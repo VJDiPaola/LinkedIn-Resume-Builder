@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { NextRequest } from "next/server";
 import { proxy } from "./proxy";
+import { createSessionToken } from "@/lib/session";
 
 describe("proxy", () => {
     it("exports proxy function and config", () => {
@@ -20,7 +21,19 @@ describe("proxy", () => {
         expect(res.status).toBe(200);
     });
 
-    it("does not overwrite existing session_token cookie", () => {
+    it("does not overwrite a valid existing session_token cookie", () => {
+        const validToken = createSessionToken();
+        const req = new NextRequest("http://localhost:3000/", {
+            headers: {
+                cookie: `session_token=${validToken}`,
+            },
+        });
+        const res = proxy(req);
+        const setCookie = res.headers.get("set-cookie");
+        expect(setCookie).toBeNull();
+    });
+
+    it("overwrites an invalid existing session_token cookie", () => {
         const req = new NextRequest("http://localhost:3000/", {
             headers: {
                 cookie: "session_token=existing.value.here",
@@ -28,6 +41,7 @@ describe("proxy", () => {
         });
         const res = proxy(req);
         const setCookie = res.headers.get("set-cookie");
-        expect(setCookie).toBeNull();
+        expect(setCookie).toBeTruthy();
+        expect(setCookie).toContain("session_token=");
     });
 });
