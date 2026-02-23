@@ -29,8 +29,8 @@ The application is a lean, focused tool built on three layers:
 **1. A single-page Next.js frontend**
 The UI presents an input form, submits it to the backend, then replaces the form with a structured results dashboard. There are no routes to navigate, no accounts to manage, and no database. The experience is intentionally minimal.
 
-**2. A streaming API route**
-A single `POST /api/optimize` endpoint validates a session token, enforces per-session rate limiting, validates inputs against a Zod schema with both minimum and maximum length constraints, then calls the OpenAI API using Vercel's `streamObject` method. User inputs are wrapped in XML delimiter tags with explicit system-prompt instructions to ignore embedded instructions, mitigating prompt injection. The response is a structured JSON object that streams progressively to the client — users see results fill in as the model generates them rather than waiting for a full response before anything renders. All requests are logged with structured JSON output, including token usage on completion.
+**2. A hardened streaming API route**
+A single `POST /api/optimize` endpoint enforces multiple layers of security before any token is spent. It verifies an HMAC-signed session cookie (created automatically by a Next.js proxy layer), then applies rate limiting keyed on a composite hash of IP address and session ID. Inputs are validated against a Zod schema with both minimum and maximum length constraints. User text is escaped with a dedicated utility (`escapeForXmlTag`) and wrapped in XML delimiter tags, with the system prompt explicitly instructing the model to ignore embedded instructions. The response is a structured JSON object that streams progressively to the client. All requests are logged as structured JSON, including token usage on completion.
 
 **3. A schema-driven output contract**
 The AI's output is constrained by a Zod schema that defines every field the model is expected to return — bullet rewrites, relevance scores, headline variants, ATS keywords, and more. This schema is used for both runtime validation and TypeScript type inference, so the frontend receives fully typed data without any manual casting.
@@ -52,6 +52,8 @@ The AI's output is constrained by a Zod schema that defines every field the mode
 | Icons | Lucide React |
 | Rate Limiting | Upstash Redis (with in-memory fallback) |
 | Logging | Structured JSON logger |
+| Testing | Vitest |
+| Deployment | Vercel |
 
 ---
 
@@ -83,11 +85,11 @@ This made iterating on the results layout straightforward. The display logic cou
 
 ### Prompt Injection Mitigation
 
-User-supplied text is wrapped in XML delimiter tags (`<job_description>`, `<resume_text>`, etc.) before being interpolated into the prompt. The system prompt explicitly instructs the model to only analyze content within those tags and to ignore any embedded instructions. This is a defense-in-depth measure — while `streamObject` constrains the output to a fixed schema (limiting the damage of a successful injection), the delimiters reduce the likelihood of the model being manipulated in the first place.
+User-supplied text is first run through `escapeForXmlTag()`, which escapes `<`, `>`, `&`, and `]` characters to prevent delimiter breakout. The escaped text is then wrapped in XML delimiter tags (`<job_description>`, `<resume_text>`, etc.) before being interpolated into the prompt. The system prompt explicitly instructs the model to only analyze content within those tags and to ignore any embedded instructions. This is a defense-in-depth measure: the escaping prevents structural injection, the schema constrains output to a fixed shape, and the delimiter instructions reduce the likelihood of semantic manipulation.
 
 ### Rate Limiting and Session Auth
 
-The API route requires a session token (via cookie) and enforces per-session rate limiting at 5 requests per minute. In production, rate limiting is backed by Upstash Redis for distributed enforcement. In local development, an in-memory sliding window implementation provides the same behavior without external dependencies. This dual-mode approach keeps the development experience lightweight while ensuring production readiness.
+Session tokens are HMAC-signed using a server-side secret (`SESSION_SECRET`). A Next.js proxy layer automatically creates and sets the cookie on first visit. The API route verifies the signature using timing-safe comparison before processing any request. Rate limiting is keyed on a SHA-256 hash of the client IP combined with the verified session ID, preventing both session-based and IP-based abuse. Limits are set at 4 requests per minute. In production, enforcement is backed by Upstash Redis for distributed state. In local development, an in-memory sliding window provides the same behavior without external dependencies. Upstash and `SESSION_SECRET` are required in production; the app fails fast if either is missing.
 
 ### Structured Logging
 
@@ -136,7 +138,7 @@ The tool surfaces skills and experience gaps between the user's current profile 
 
 **Single-request architecture limits depth.** All analysis is done in one API call. This keeps the implementation simple but means there is a hard ceiling on how deep the analysis can go. A multi-step agentic approach — where the model first analyzes the JD, then rewrites bullets, then generates LinkedIn content as separate calls — could produce higher-quality output at the cost of additional complexity and latency.
 
-**Session-based auth is minimal.** The API validates a session token from cookies and rate-limits by session, but there is no user account system, login flow, or persistent identity. For a deployed product, integrating a proper auth provider (e.g., NextAuth, Clerk) would be necessary for abuse prevention beyond simple rate limiting.
+**No user accounts.** Session tokens are cryptographically signed and verified, and rate limiting is enforced per IP+session, but there is no user account system, login flow, or persistent identity. For a deployed product with paid tiers or usage tracking, integrating an auth provider (e.g., NextAuth, Clerk) would be necessary.
 
 **60-second API timeout.** The API route sets a 60-second max duration. For long resumes or complex job descriptions, this is occasionally tight. Edge runtime or a queue-based approach would be needed for production scale.
 
@@ -147,13 +149,27 @@ The tool surfaces skills and experience gaps between the user's current profile 
 - **Pages:** 1
 - **API Routes:** 1
 - **Business Components:** 3 (`InputForm`, `ResultsDashboard`, `ResultsSkeleton`)
-- **Infrastructure Modules:** 3 (`schemas`, `rate-limit`, `logger`)
+- **Infrastructure Modules:** 6 (`schemas`, `rate-limit`, `logger`, `session`, `api-errors`, `prompt-utils`)
+- **Proxy Layer:** 1 (`proxy.ts` — session cookie management)
 - **UI Primitives:** 9 (shadcn)
 - **Schema Definitions:** 2 (input, output)
-- **Test Suites:** 1 (`schemas.test.ts`)
-- **External Dependencies:** OpenAI API, Upstash Redis (optional)
-- **Estimated Lines of Code:** ~1,300 (excluding generated files and node_modules)
+- **Test Suites:** 5 (`schemas`, `rate-limit`, `session`, `prompt-utils`, `proxy`)
+- **External Dependencies:** OpenAI API, Upstash Redis (production)
+- **Estimated Lines of Code:** ~1,700 (excluding generated files and node_modules)
 - **Build Time:** ~5 seconds
+
+---
+
+## Development Workflow
+
+This project was built using a multi-agent AI development workflow:
+
+1. **Planning with Manus.** The initial project plan, feature scope, and architecture were defined using Manus, an AI planning agent, to produce a structured build specification.
+2. **Initial build with Antigravity.** The first working version of the application was scaffolded and built by Antigravity, which generated the frontend, API route, schemas, and component structure from the Manus plan.
+3. **Security hardening with Amp and Cursor.** After the initial build, Amp and Cursor were used together to layer in production security: HMAC-signed session tokens, IP+session rate limiting, input escaping, prompt injection mitigation, structured logging, and standardized error responses.
+4. **Code review with OpenAI Codex 5.3.** Codex 5.3 was used for formal code review passes focused specifically on security vulnerabilities, production hardening, and type safety. Multiple review cycles drove improvements to input validation bounds, error information leakage, and the removal of all `any` types.
+5. **Testing with Amp and Cursor.** Test suites for all infrastructure modules (schemas, rate limiting, session management, prompt escaping, proxy) were written and validated using Amp and Cursor.
+6. **Deployment on Vercel.** The application is deployed on Vercel with environment variables for OpenAI, Upstash Redis, and session secrets configured in the project settings.
 
 ---
 
