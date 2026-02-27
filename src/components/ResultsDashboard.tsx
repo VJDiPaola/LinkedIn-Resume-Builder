@@ -1,26 +1,237 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import type { DeepPartial } from "ai";
 import { OutputType } from "@/lib/schemas";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Copy, Briefcase, Linkedin, FileText, CheckCircle2, XCircle } from "lucide-react";
+import { Copy, Briefcase, Linkedin, FileText, CheckCircle2, XCircle, Download, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ResultsDashboardProps {
     data: DeepPartial<OutputType>;
+    isStreaming?: boolean;
 }
 
-export function ResultsDashboard({ data }: ResultsDashboardProps) {
-    if (!data) return null;
+function getScoreClasses(score: number | undefined): { text: string; badge: string } {
+    if (score === 5) return { text: "text-emerald-700", badge: "bg-emerald-50 border-emerald-200" };
+    if (score === 4) return { text: "text-green-700", badge: "bg-green-50 border-green-200" };
+    if (score === 3) return { text: "text-amber-700", badge: "bg-amber-50 border-amber-200" };
+    if (score === 2) return { text: "text-orange-700", badge: "bg-orange-50 border-orange-200" };
+    if (score === 1) return { text: "text-red-700", badge: "bg-red-50 border-red-200" };
+    return { text: "text-stone-500", badge: "bg-stone-50 border-stone-200" };
+}
 
-    const handleCopy = (text: string) => {
-        navigator.clipboard.writeText(text);
+function buildExportText(data: DeepPartial<OutputType>): string {
+    const lines: string[] = [];
+    lines.push("ResumeTailor Export");
+    lines.push(`Generated: ${new Date().toLocaleString()}`);
+    lines.push("");
+
+    const explicitRequirements = (data.jdAnalysis?.explicitRequirements ?? [])
+        .map((item) => item?.trim())
+        .filter((item): item is string => Boolean(item));
+    const implicitRequirements = (data.jdAnalysis?.implicitRequirements ?? [])
+        .map((item) => item?.trim())
+        .filter((item): item is string => Boolean(item));
+    const problemsToSolve = (data.jdAnalysis?.problemsToSolve ?? [])
+        .map((item) => item?.trim())
+        .filter((item): item is string => Boolean(item));
+    const headlines = (data.linkedInOptimization?.headlineVariants ?? []).filter(
+        (variant): variant is NonNullable<typeof variant> => Boolean(variant),
+    );
+    const aboutSection = data.linkedInOptimization?.aboutSection?.trim();
+    const bulletAnalysis = (data.resumeOptimization?.bulletAnalysis ?? []).filter(
+        (bullet): bullet is NonNullable<typeof bullet> => Boolean(bullet),
+    );
+    const atsKeywords = (data.resumeOptimization?.atsKeywords ?? []).filter(
+        (keyword): keyword is NonNullable<typeof keyword> => Boolean(keyword),
+    );
+    const gapAnalysis = (data.resumeOptimization?.gapAnalysis ?? []).filter(
+        (gap): gap is NonNullable<typeof gap> => Boolean(gap),
+    );
+
+    lines.push("JOB DESCRIPTION ANALYSIS");
+    if (explicitRequirements.length > 0) {
+        lines.push("Explicit Requirements:");
+        explicitRequirements.forEach((req, index) => lines.push(`${index + 1}. ${req}`));
+        lines.push("");
+    }
+    if (implicitRequirements.length > 0) {
+        lines.push("Implicit Focus:");
+        implicitRequirements.forEach((req, index) => lines.push(`${index + 1}. ${req}`));
+        lines.push("");
+    }
+    if (problemsToSolve.length > 0) {
+        lines.push("Problems to Solve:");
+        problemsToSolve.forEach((problem, index) => lines.push(`${index + 1}. ${problem}`));
+        lines.push("");
+    }
+
+    lines.push("LINKEDIN CONTENT");
+    if (headlines.length > 0) {
+        lines.push("Headline Variants:");
+        headlines.forEach((variant, index) => {
+            lines.push(`${index + 1}. ${variant.type ?? "Variant"}: ${variant.text ?? ""}`);
+        });
+        lines.push("");
+    }
+    if (aboutSection) {
+        lines.push("About Section:");
+        lines.push(aboutSection);
+        lines.push("");
+    }
+
+    lines.push("RESUME OPTIMIZATION");
+    if (bulletAnalysis.length > 0) {
+        lines.push("Tailored Resume Bullets:");
+        bulletAnalysis.forEach((bullet, index) => {
+            lines.push(`${index + 1}. ${bullet.rewriteSuggestion ?? ""}`);
+            if (typeof bullet.relevanceScore === "number") {
+                lines.push(`   Match Score: ${bullet.relevanceScore}/5`);
+            }
+            if (bullet.positioningNote) {
+                lines.push(`   Positioning Note: ${bullet.positioningNote}`);
+            }
+            if (bullet.originalBullet) {
+                lines.push(`   Original Bullet: ${bullet.originalBullet}`);
+            }
+            lines.push("");
+        });
+    }
+    if (atsKeywords.length > 0) {
+        lines.push("ATS Keywords:");
+        atsKeywords.forEach((keyword, index) => {
+            const suggestion = keyword.status === "Missing" && keyword.suggestion ? ` - ${keyword.suggestion}` : "";
+            lines.push(`${index + 1}. ${keyword.keyword ?? ""} (${keyword.status ?? "Unknown"})${suggestion}`);
+        });
+        lines.push("");
+    }
+    if (gapAnalysis.length > 0) {
+        lines.push("Gap Analysis:");
+        gapAnalysis.forEach((gap, index) => {
+            lines.push(`${index + 1}. ${gap.gap ?? ""}`);
+            lines.push(`   Recommendation: ${gap.recommendation ?? ""}`);
+        });
+    }
+
+    return lines
+        .join("\n")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
+}
+
+function downloadTextFile(fileName: string, content: string): void {
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    link.click();
+    URL.revokeObjectURL(url);
+}
+
+export function ResultsDashboard({ data, isStreaming = false }: ResultsDashboardProps) {
+    const [copiedAll, setCopiedAll] = useState(false);
+    const [showScrollHint, setShowScrollHint] = useState(false);
+    const [hiddenBulletCount, setHiddenBulletCount] = useState(0);
+    const copyFeedbackTimerRef = useRef<number | null>(null);
+    const viewportRef = useRef<HTMLDivElement | null>(null);
+    const hasScrolledBulletsRef = useRef(false);
+    const bulletCount = data.resumeOptimization?.bulletAnalysis?.length ?? 0;
+
+    useEffect(() => {
+        return () => {
+            if (copyFeedbackTimerRef.current) {
+                window.clearTimeout(copyFeedbackTimerRef.current);
+            }
+        };
+    }, []);
+
+    useEffect(() => {
+        const viewport = viewportRef.current;
+        if (!viewport) return;
+        hasScrolledBulletsRef.current = false;
+
+        const updateScrollHint = () => {
+            const canScroll = viewport.scrollHeight > viewport.clientHeight + 4;
+            const atBottom = viewport.scrollTop + viewport.clientHeight >= viewport.scrollHeight - 4;
+            const cards = Array.from(viewport.querySelectorAll<HTMLElement>("[data-bullet-card='true']"));
+            const foldPosition = viewport.scrollTop + viewport.clientHeight;
+            const remainingCards = cards.filter((card) => card.offsetTop >= foldPosition - 12).length;
+
+            if (viewport.scrollTop > 8) {
+                hasScrolledBulletsRef.current = true;
+            }
+
+            setHiddenBulletCount(canScroll ? remainingCards : 0);
+            setShowScrollHint(canScroll && !atBottom && !hasScrolledBulletsRef.current);
+        };
+
+        updateScrollHint();
+        viewport.addEventListener("scroll", updateScrollHint, { passive: true });
+
+        const resizeObserver = new ResizeObserver(updateScrollHint);
+        resizeObserver.observe(viewport);
+
+        return () => {
+            viewport.removeEventListener("scroll", updateScrollHint);
+            resizeObserver.disconnect();
+        };
+    }, [bulletCount]);
+
+    const handleCopy = async (text: string) => {
+        if (!text) return;
+        await navigator.clipboard.writeText(text);
+    };
+
+    const handleCopyAll = async () => {
+        await navigator.clipboard.writeText(buildExportText(data));
+        setCopiedAll(true);
+        if (copyFeedbackTimerRef.current) {
+            window.clearTimeout(copyFeedbackTimerRef.current);
+        }
+        copyFeedbackTimerRef.current = window.setTimeout(() => setCopiedAll(false), 1800);
+    };
+
+    const handleDownload = () => {
+        const dateStamp = new Date().toISOString().slice(0, 10);
+        downloadTextFile(`resume-tailor-export-${dateStamp}.txt`, buildExportText(data));
     };
 
     return (
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 w-full animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <div className="space-y-4 w-full animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-sm text-stone-600">
+                        {isStreaming
+                            ? "Results are still generating. You can copy sections now and export once finished."
+                            : "Results are ready. Copy everything at once or download a text export."}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            className="bg-stone-100 hover:bg-stone-200 text-stone-700"
+                            onClick={handleCopyAll}
+                        >
+                            <Copy className="h-3.5 w-3.5 mr-1.5" />
+                            {copiedAll ? "Copied" : "Copy All"}
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-stone-300 text-stone-700 hover:bg-stone-50"
+                            onClick={handleDownload}
+                        >
+                            <Download className="h-3.5 w-3.5 mr-1.5" />
+                            Download .txt
+                        </Button>
+                    </div>
+                </div>
+            </div>
 
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 w-full">
             {/* LEFT COLUMN: Job Description Analysis */}
             <div className="xl:col-span-4 space-y-6">
                 <Card className="bg-white border-stone-200 shadow-sm">
@@ -111,34 +322,59 @@ export function ResultsDashboard({ data }: ResultsDashboardProps) {
 
                         <div className="space-y-4">
                             <h4 className="text-sm font-medium text-stone-500">Tailored Resume Bullets</h4>
-                            <ScrollArea className="h-[400px] pr-4">
-                                <div className="space-y-4">
-                                    {data.resumeOptimization?.bulletAnalysis?.map((bullet, i) => (
-                                        <div key={i} className="p-4 rounded-lg border border-stone-200 bg-white space-y-3">
-                                            <div className="flex justify-between items-start gap-2">
-                                                <div className="flex-1">
-                                                    <p className="text-sm font-medium text-stone-800">{bullet?.rewriteSuggestion}</p>
+                            <div className="rounded-lg border border-stone-200 bg-stone-50 p-3 text-xs leading-relaxed text-stone-600 space-y-1">
+                                <p className="font-medium text-stone-700 flex items-center gap-1.5">
+                                    <Info className="h-3.5 w-3.5" />
+                                    Match score guide
+                                </p>
+                                <p><span className="font-semibold">5/5:</span> Highly aligned with the job language and impact.</p>
+                                <p><span className="font-semibold">4/5:</span> Strong match, but can be more specific or keyword-rich.</p>
+                                <p><span className="font-semibold">3/5 or below:</span> Partial match and should be revised first.</p>
+                            </div>
+                            <div className="relative">
+                                <ScrollArea type="always" className="h-[400px] pr-4" viewportRef={viewportRef}>
+                                    <div className="space-y-4">
+                                        {data.resumeOptimization?.bulletAnalysis?.map((bullet, i) => {
+                                            const score = bullet?.relevanceScore;
+                                            const scoreClasses = getScoreClasses(score);
+
+                                            return (
+                                                <div key={i} data-bullet-card="true" className="p-4 rounded-lg border border-stone-200 bg-white space-y-3">
+                                                    <div className="flex justify-between items-start gap-2">
+                                                        <div className="flex-1">
+                                                            <p className="text-sm font-medium text-stone-800">{bullet?.rewriteSuggestion}</p>
+                                                        </div>
+                                                        <Button variant="secondary" size="icon" className="h-7 w-7 shrink-0 bg-stone-100 hover:bg-stone-200 text-stone-500" onClick={() => handleCopy(bullet?.rewriteSuggestion || "")}>
+                                                            <Copy className="h-3 w-3" />
+                                                        </Button>
+                                                    </div>
+                                                    <div className="pl-3 border-l-2 border-stone-200">
+                                                        <p className="text-xs text-stone-400 italic line-clamp-2">Original: {bullet?.originalBullet}</p>
+                                                    </div>
+                                                    <div className="flex items-center justify-between text-xs gap-2">
+                                                        <span className="text-stone-500">{bullet?.positioningNote}</span>
+                                                        <div className="flex items-center space-x-1">
+                                                            <span className="text-stone-400">Match:</span>
+                                                            <span className={`px-2 py-1 rounded-full border font-bold ${scoreClasses.badge} ${scoreClasses.text}`}>
+                                                                {typeof score === "number" ? `${score}/5` : "N/A"}
+                                                            </span>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <Button variant="secondary" size="icon" className="h-7 w-7 shrink-0 bg-stone-100 hover:bg-stone-200 text-stone-500" onClick={() => handleCopy(bullet?.rewriteSuggestion || "")}>
-                                                    <Copy className="h-3 w-3" />
-                                                </Button>
-                                            </div>
-                                            <div className="pl-3 border-l-2 border-stone-200">
-                                                <p className="text-xs text-stone-400 italic line-clamp-2">Original: {bullet?.originalBullet}</p>
-                                            </div>
-                                            <div className="flex items-center justify-between text-xs">
-                                                <span className="text-stone-500">{bullet?.positioningNote}</span>
-                                                <div className="flex items-center space-x-1">
-                                                    <span className="text-stone-400">Match:</span>
-                                                    <span className={bullet?.relevanceScore && bullet.relevanceScore >= 4 ? "text-green-400 font-bold" : "text-amber-400 font-bold"}>
-                                                        {bullet?.relevanceScore}/5
-                                                    </span>
-                                                </div>
-                                            </div>
+                                            );
+                                        })}
+                                    </div>
+                                </ScrollArea>
+
+                                {showScrollHint && (
+                                    <div className="pointer-events-none absolute inset-x-0 bottom-0">
+                                        <div className="h-14 bg-gradient-to-t from-white via-white/90 to-transparent" />
+                                        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full border border-stone-300 bg-white/95 px-3 py-1 text-[11px] font-medium text-stone-600 shadow-sm">
+                                            {hiddenBulletCount > 0 ? `Scroll for ${hiddenBulletCount} more bullets` : "Scroll for more bullets"}
                                         </div>
-                                    ))}
-                                </div>
-                            </ScrollArea>
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
@@ -174,5 +410,6 @@ export function ResultsDashboard({ data }: ResultsDashboardProps) {
                 </Card>
             </div>
         </div>
+    </div>
     );
 }

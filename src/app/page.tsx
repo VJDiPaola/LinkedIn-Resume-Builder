@@ -7,26 +7,30 @@ import { ResultsDashboard } from "@/components/ResultsDashboard";
 import { ResultsSkeleton } from "@/components/ResultsSkeleton";
 import { experimental_useObject as useObject } from "@ai-sdk/react";
 import { InputType, OutputSchema } from "@/lib/schemas";
-import { Sparkles, ArrowLeft } from "lucide-react";
+import { Sparkles, ArrowLeft, Loader2, CheckCircle2 } from "lucide-react";
 
 export default function Home() {
   const resultsRef = useRef<HTMLDivElement>(null);
   const [showResults, setShowResults] = useState(false);
+  const [completedAt, setCompletedAt] = useState<Date | null>(null);
 
   const { submit, isLoading, object, error } = useObject({
     api: "/api/optimize",
     schema: OutputSchema,
     onFinish: () => {
+      setCompletedAt(new Date());
       console.log("Optimization complete.");
     },
     onError: (err: Error) => {
       setShowResults(false);
+      setCompletedAt(null);
       window.scrollTo({ top: 0, behavior: "smooth" });
       console.error("Failed to stream optimization object:", err);
     }
   });
 
   const handleFormSubmit = (data: InputType) => {
+    setCompletedAt(null);
     submit(data);
     setShowResults(true);
 
@@ -38,6 +42,7 @@ export default function Home() {
 
   const handleStartOver = () => {
     setShowResults(false);
+    setCompletedAt(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -47,6 +52,40 @@ export default function Home() {
     lowerErrorMessage.includes("rate_limit_exceeded") ||
     lowerErrorMessage.includes("too many requests") ||
     lowerErrorMessage.includes("429");
+
+  const jdSectionComplete = Boolean(
+    object?.jdAnalysis?.explicitRequirements?.length &&
+    object?.jdAnalysis?.implicitRequirements?.length &&
+    object?.jdAnalysis?.problemsToSolve?.length
+  );
+  const linkedInSectionComplete = Boolean(
+    object?.linkedInOptimization?.headlineVariants?.length &&
+    object?.linkedInOptimization?.aboutSection
+  );
+  const resumeSectionComplete = Boolean(
+    object?.resumeOptimization?.bulletAnalysis?.length &&
+    object?.resumeOptimization?.atsKeywords?.length &&
+    object?.resumeOptimization?.gapAnalysis?.length
+  );
+
+  const sectionProgress = [
+    { label: "JD Analysis", complete: jdSectionComplete },
+    { label: "LinkedIn Content", complete: linkedInSectionComplete },
+    { label: "Resume Optimization", complete: resumeSectionComplete },
+  ];
+  const completedSections = sectionProgress.filter((section) => section.complete).length;
+  const completedTime = completedAt
+    ? completedAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+    : null;
+  const processingStatusLabel = isLoading
+    ? completedSections > 0
+      ? `Still generating output (${completedSections}/3 sections ready)...`
+      : "Analyzing your inputs and generating recommendations..."
+    : object
+      ? completedTime
+        ? `All sections generated at ${completedTime}.`
+        : "All sections generated."
+      : "Ready to generate results.";
 
   return (
     <div className="min-h-screen relative overflow-hidden flex flex-col items-center pb-24">
@@ -105,8 +144,40 @@ export default function Home() {
               <ArrowLeft className="h-4 w-4" />
               Start Over
             </button>
+
+            <div className="mb-6 rounded-xl border border-stone-200 bg-white p-4 shadow-sm" role="status" aria-live="polite">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="inline-flex items-center gap-2 text-sm font-medium text-stone-700">
+                  {isLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-stone-500" />
+                  ) : (
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  )}
+                  <span>{processingStatusLabel}</span>
+                </div>
+                <span className="text-xs text-stone-500">{completedSections}/3 sections ready</span>
+              </div>
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {sectionProgress.map((section) => (
+                  <div
+                    key={section.label}
+                    className={`flex items-center justify-between rounded-lg border px-3 py-2 text-xs ${
+                      section.complete
+                        ? "border-green-200 bg-green-50 text-green-700"
+                        : isLoading
+                          ? "border-stone-200 bg-stone-50 text-stone-600"
+                          : "border-stone-200 bg-white text-stone-500"
+                    }`}
+                  >
+                    <span>{section.label}</span>
+                    <span className="font-semibold">{section.complete ? "Done" : isLoading ? "Generating" : "Not Generated"}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {object ? (
-              <ResultsDashboard data={object} />
+              <ResultsDashboard data={object} isStreaming={isLoading} />
             ) : (
               <ResultsSkeleton />
             )}
