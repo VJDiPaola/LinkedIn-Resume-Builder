@@ -8,6 +8,7 @@ import { ResultsSkeleton } from "@/components/ResultsSkeleton";
 import { experimental_useObject as useObject } from "@ai-sdk/react";
 import { InputType, OutputSchema } from "@/lib/schemas";
 import { Sparkles, ArrowLeft, Loader2, CheckCircle2 } from "lucide-react";
+import posthog from "posthog-js";
 
 export default function Home() {
   const resultsRef = useRef<HTMLDivElement>(null);
@@ -19,18 +20,19 @@ export default function Home() {
     schema: OutputSchema,
     onFinish: () => {
       setCompletedAt(new Date());
-      console.log("Optimization complete.");
+      posthog.capture("optimization_completed");
     },
     onError: (err: Error) => {
       setShowResults(false);
       setCompletedAt(null);
       window.scrollTo({ top: 0, behavior: "smooth" });
-      console.error("Failed to stream optimization object:", err);
+      posthog.capture("optimization_error", { error: err.message });
     }
   });
 
   const handleFormSubmit = (data: InputType) => {
     setCompletedAt(null);
+    posthog.capture("optimization_submitted");
     submit(data);
     setShowResults(true);
 
@@ -41,6 +43,7 @@ export default function Home() {
   };
 
   const handleStartOver = () => {
+    posthog.capture("start_over_clicked");
     setShowResults(false);
     setCompletedAt(null);
     window.scrollTo({ top: 0, behavior: "smooth" });

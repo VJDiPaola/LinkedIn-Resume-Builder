@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Copy, Briefcase, Linkedin, FileText, CheckCircle2, XCircle, Download, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import posthog from "posthog-js";
 
 interface ResultsDashboardProps {
     data: DeepPartial<OutputType>;
@@ -186,6 +187,7 @@ export function ResultsDashboard({ data, isStreaming = false }: ResultsDashboard
     };
 
     const handleCopyAll = async () => {
+        posthog.capture("results_copy_all");
         await navigator.clipboard.writeText(buildExportText(data));
         setCopiedAll(true);
         if (copyFeedbackTimerRef.current) {
@@ -195,6 +197,7 @@ export function ResultsDashboard({ data, isStreaming = false }: ResultsDashboard
     };
 
     const handleDownload = () => {
+        posthog.capture("results_download");
         const dateStamp = new Date().toISOString().slice(0, 10);
         downloadTextFile(`resume-tailor-export-${dateStamp}.txt`, buildExportText(data));
     };
