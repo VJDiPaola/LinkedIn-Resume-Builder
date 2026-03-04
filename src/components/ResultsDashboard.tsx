@@ -136,10 +136,20 @@ export function ResultsDashboard({ data, isStreaming = false }: ResultsDashboard
     const [copiedAll, setCopiedAll] = useState(false);
     const [showScrollHint, setShowScrollHint] = useState(false);
     const [hiddenBulletCount, setHiddenBulletCount] = useState(0);
+    const [showExplicitHint, setShowExplicitHint] = useState(false);
+    const [hiddenExplicitCount, setHiddenExplicitCount] = useState(0);
+    const [showImplicitHint, setShowImplicitHint] = useState(false);
+    const [hiddenImplicitCount, setHiddenImplicitCount] = useState(0);
     const copyFeedbackTimerRef = useRef<number | null>(null);
     const viewportRef = useRef<HTMLDivElement | null>(null);
+    const explicitViewportRef = useRef<HTMLDivElement | null>(null);
+    const implicitViewportRef = useRef<HTMLDivElement | null>(null);
     const hasScrolledBulletsRef = useRef(false);
+    const hasScrolledExplicitRef = useRef(false);
+    const hasScrolledImplicitRef = useRef(false);
     const bulletCount = data.resumeOptimization?.bulletAnalysis?.length ?? 0;
+    const explicitCount = data.jdAnalysis?.explicitRequirements?.length ?? 0;
+    const implicitCount = data.jdAnalysis?.implicitRequirements?.length ?? 0;
 
     useEffect(() => {
         return () => {
@@ -180,6 +190,64 @@ export function ResultsDashboard({ data, isStreaming = false }: ResultsDashboard
             resizeObserver.disconnect();
         };
     }, [bulletCount]);
+
+    useEffect(() => {
+        const viewport = explicitViewportRef.current;
+        if (!viewport) return;
+        hasScrolledExplicitRef.current = false;
+
+        const updateHint = () => {
+            const canScroll = viewport.scrollHeight > viewport.clientHeight + 4;
+            const atBottom = viewport.scrollTop + viewport.clientHeight >= viewport.scrollHeight - 4;
+            const cards = Array.from(viewport.querySelectorAll<HTMLElement>("[data-req-card='true']"));
+            const foldPosition = viewport.scrollTop + viewport.clientHeight;
+            const remaining = cards.filter((card) => card.offsetTop >= foldPosition - 12).length;
+
+            if (viewport.scrollTop > 8) hasScrolledExplicitRef.current = true;
+
+            setHiddenExplicitCount(canScroll ? remaining : 0);
+            setShowExplicitHint(canScroll && !atBottom && !hasScrolledExplicitRef.current);
+        };
+
+        updateHint();
+        viewport.addEventListener("scroll", updateHint, { passive: true });
+        const resizeObserver = new ResizeObserver(updateHint);
+        resizeObserver.observe(viewport);
+
+        return () => {
+            viewport.removeEventListener("scroll", updateHint);
+            resizeObserver.disconnect();
+        };
+    }, [explicitCount]);
+
+    useEffect(() => {
+        const viewport = implicitViewportRef.current;
+        if (!viewport) return;
+        hasScrolledImplicitRef.current = false;
+
+        const updateHint = () => {
+            const canScroll = viewport.scrollHeight > viewport.clientHeight + 4;
+            const atBottom = viewport.scrollTop + viewport.clientHeight >= viewport.scrollHeight - 4;
+            const cards = Array.from(viewport.querySelectorAll<HTMLElement>("[data-implicit-card='true']"));
+            const foldPosition = viewport.scrollTop + viewport.clientHeight;
+            const remaining = cards.filter((card) => card.offsetTop >= foldPosition - 12).length;
+
+            if (viewport.scrollTop > 8) hasScrolledImplicitRef.current = true;
+
+            setHiddenImplicitCount(canScroll ? remaining : 0);
+            setShowImplicitHint(canScroll && !atBottom && !hasScrolledImplicitRef.current);
+        };
+
+        updateHint();
+        viewport.addEventListener("scroll", updateHint, { passive: true });
+        const resizeObserver = new ResizeObserver(updateHint);
+        resizeObserver.observe(viewport);
+
+        return () => {
+            viewport.removeEventListener("scroll", updateHint);
+            resizeObserver.disconnect();
+        };
+    }, [implicitCount]);
 
     const handleCopy = async (text: string) => {
         if (!text) return;
@@ -247,18 +315,42 @@ export function ResultsDashboard({ data, isStreaming = false }: ResultsDashboard
                     <CardContent className="space-y-4">
                         <div>
                             <h4 className="text-sm font-medium text-stone-500 mb-2">Explicit Requirements</h4>
-                            <div className="space-y-2">
-                                {data.jdAnalysis?.explicitRequirements?.map((req, i) => (
-                                    <div key={i} className="px-3 py-2 rounded-lg border border-stone-200 bg-stone-50 text-sm text-stone-700 leading-relaxed">{req}</div>
-                                ))}
+                            <div className="relative">
+                                <ScrollArea type="always" className="h-[250px] pr-4" viewportRef={explicitViewportRef}>
+                                    <div className="space-y-2">
+                                        {data.jdAnalysis?.explicitRequirements?.map((req, i) => (
+                                            <div key={i} data-req-card="true" className="px-3 py-2 rounded-lg border border-stone-200 bg-stone-50 text-sm text-stone-700 leading-relaxed">{req}</div>
+                                        ))}
+                                    </div>
+                                </ScrollArea>
+                                {showExplicitHint && (
+                                    <div className="pointer-events-none absolute inset-x-0 bottom-0">
+                                        <div className="h-14 bg-gradient-to-t from-white via-white/90 to-transparent" />
+                                        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full border border-stone-300 bg-white/95 px-3 py-1 text-[11px] font-medium text-stone-600 shadow-sm">
+                                            {hiddenExplicitCount > 0 ? `Scroll for ${hiddenExplicitCount} more requirements` : "Scroll for more requirements"}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                         <div>
                             <h4 className="text-sm font-medium text-stone-500 mb-2 mt-4">Implicit Focus</h4>
-                            <div className="space-y-2">
-                                {data.jdAnalysis?.implicitRequirements?.map((req, i) => (
-                                    <div key={i} className="px-3 py-2 rounded-lg border border-stone-200 bg-stone-50 text-sm text-stone-600 leading-relaxed">{req}</div>
-                                ))}
+                            <div className="relative">
+                                <ScrollArea type="always" className="h-[200px] pr-4" viewportRef={implicitViewportRef}>
+                                    <div className="space-y-2">
+                                        {data.jdAnalysis?.implicitRequirements?.map((req, i) => (
+                                            <div key={i} data-implicit-card="true" className="px-3 py-2 rounded-lg border border-stone-200 bg-stone-50 text-sm text-stone-600 leading-relaxed">{req}</div>
+                                        ))}
+                                    </div>
+                                </ScrollArea>
+                                {showImplicitHint && (
+                                    <div className="pointer-events-none absolute inset-x-0 bottom-0">
+                                        <div className="h-14 bg-gradient-to-t from-white via-white/90 to-transparent" />
+                                        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full border border-stone-300 bg-white/95 px-3 py-1 text-[11px] font-medium text-stone-600 shadow-sm">
+                                            {hiddenImplicitCount > 0 ? `Scroll for ${hiddenImplicitCount} more requirements` : "Scroll for more requirements"}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                         <div>
