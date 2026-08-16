@@ -1,12 +1,12 @@
-# Case Study: LinkedIn Resume Builder
+# Case Study: ResumeTailor
 
-**An AI-Powered Career Optimization Tool Built with Next.js and the Vercel AI SDK**
+**A shipped Next.js product that tailors a resume to a job posting.** This is product engineering — session cookies, rate limits, a schema-constrained model call — not an agent platform.
 
 ---
 
 ## Overview
 
-LinkedIn Resume Builder is a single-page web application that uses large language models to help job seekers tailor their resumes and LinkedIn profiles to specific job descriptions. In one submission, the tool performs job description analysis, resume bullet rewriting, ATS keyword extraction, LinkedIn headline generation, and gap analysis — all delivered as a real-time streaming response.
+ResumeTailor is a single-page web app at [resumetailor.teamvince.com](https://resumetailor.teamvince.com). In one submission it streams job-description analysis, resume bullet rewriting, ATS keyword extraction, LinkedIn headline generation, and gap analysis. The interesting part for a hiring read is the request path: signed session, rate limit, Zod in, Zod out — not the prompt.
 
 ---
 

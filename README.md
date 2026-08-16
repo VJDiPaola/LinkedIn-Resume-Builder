@@ -1,6 +1,8 @@
 # ResumeTailor
 
-Tailor your resume and LinkedIn profile to any job description. The app analyzes job postings, identifies gaps, and generates tailored content and resume recommendations powered by OpenAI.
+A **shipped Next.js product**, live at [resumetailor.teamvince.com](https://resumetailor.teamvince.com). Not an agent platform and not an eval harness.
+
+Paste a job description and a resume. The app streams structured rewrites, ATS keywords, and LinkedIn copy through a signed-session API with rate limits, Zod contracts, and Vitest coverage.
 
 ## Architecture
 
